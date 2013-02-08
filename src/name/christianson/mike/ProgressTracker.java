@@ -1,23 +1,16 @@
 package name.christianson.mike;
 
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
-
 public class ProgressTracker implements Runnable {
 
-	private final AtomicInteger lostCustomers;
-	private final AtomicInteger totalHaircuts;
-	private final AtomicBoolean shopOpen;
+	private final BarberShop shop;
 
-	public ProgressTracker(AtomicBoolean shopOpen, AtomicInteger totalHaircuts, AtomicInteger lostCustomers) {
-		this.shopOpen = shopOpen;
-		this.totalHaircuts = totalHaircuts;
-		this.lostCustomers = lostCustomers;
+	public ProgressTracker(BarberShop shop) {
+		this.shop = shop;
 	}
 
 	@Override
 	public void run() {
-		while (shopOpen.get()) {
+		while (shop.isOpen()) {
 			try {
 				Thread.sleep(100);
 				printProgress();
@@ -27,10 +20,10 @@ public class ProgressTracker implements Runnable {
 			}
 		}
 		printProgress();
-		System.out.println("");
+		System.out.println();
 	}
 
 	private void printProgress() {
-		System.out.printf("The shop served %s customers but turned away %s.\r", totalHaircuts, lostCustomers);
+		System.out.printf("The shop served %s customers but turned away %s.\r", shop.haircuts(), shop.lostCustomers());
 	}
 }

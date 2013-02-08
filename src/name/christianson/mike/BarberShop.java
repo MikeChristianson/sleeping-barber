@@ -11,29 +11,66 @@ import static java.util.concurrent.TimeUnit.*;
 public class BarberShop {
 	public static final int NUM_WAITING_ROOM_CHAIRS = 3;
 	public static final long SHOP_RUNTIME_MILLIS = SECONDS.toMillis(10);
+	private final static AtomicBoolean shopOpen = new AtomicBoolean();
+	private final static AtomicInteger totalHaircuts = new AtomicInteger();
+	private final static AtomicInteger lostCustomers = new AtomicInteger();
+	private final BlockingQueue<Object> waitingRoom = new LinkedBlockingQueue<>(NUM_WAITING_ROOM_CHAIRS);
 
 	public static void main(String[] args) throws InterruptedException {
-		final AtomicBoolean shopOpen = new AtomicBoolean();
-		final AtomicInteger totalHaircuts = new AtomicInteger();
-		final AtomicInteger lostCustomers = new AtomicInteger();
-		BlockingQueue<Object> waitingRoom = new LinkedBlockingQueue<>(NUM_WAITING_ROOM_CHAIRS);
+		BarberShop shop = new BarberShop();
 
-		shopOpen.set(true);
-		
 		ExecutorService executor = Executors.newFixedThreadPool(3);
 		
-		Runnable customerGenerator = new CustomerGenerator(shopOpen, waitingRoom, lostCustomers);
-		Runnable barber = new Barber(shopOpen, waitingRoom, totalHaircuts);
-		Runnable progressTracker = new ProgressTracker(shopOpen, totalHaircuts, lostCustomers);
+		Runnable customerGenerator = new CustomerGenerator(shop);
+		Runnable barber = new Barber(shop);
+		Runnable progressTracker = new ProgressTracker(shop);
 		
+		shop.open();
+		
+		executor.execute(progressTracker);
 		executor.execute(barber);
 		executor.execute(customerGenerator);
-		executor.execute(progressTracker);
 		executor.shutdown();
 		
 		Thread.sleep(SHOP_RUNTIME_MILLIS);
 		
+		shop.close();
+	}
+
+	private void close() {
 		shopOpen.set(false);
+	}
+
+	private void open() {
+		shopOpen.set(true);
+	}
+
+	public boolean isOpen() {
+		return shopOpen.get();
+	}
+
+	public boolean seatCustomerInWaitingRoom(Object customer) {
+		boolean customerSeated = waitingRoom.offer(customer);
+		if(!customerSeated) {
+			lostCustomers.incrementAndGet();
+		}
+		return customerSeated;
+	}
+	
+	public Object napUntilCustomerArrives() throws InterruptedException {
+		return waitingRoom.take();
+	}
+
+	public void recordHaircut() {
+		totalHaircuts.incrementAndGet();
+	}
+
+	public Object lostCustomers() {
+		return lostCustomers.get();
+	}
+
+	public Object haircuts() {
+		return totalHaircuts.get();
 	}
 
 }

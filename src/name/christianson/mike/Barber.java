@@ -1,33 +1,29 @@
 package name.christianson.mike;
 
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
-
 public class Barber implements Runnable {
 	private static final int HAIRCUT_TIME_MILLIS = 20;
-	private final AtomicBoolean shopOpen;
-	private final BlockingQueue<?> waitingRoom;
-	private final AtomicInteger totalHaircuts;
+	private final BarberShop shop;
 
-	public Barber(AtomicBoolean shopOpen, BlockingQueue<?> waitingRoom, AtomicInteger totalHaircuts) {
-		this.shopOpen = shopOpen;
-		this.waitingRoom = waitingRoom;
-		this.totalHaircuts = totalHaircuts;
+	public Barber(BarberShop shop) {
+		this.shop = shop;
 	}
 
 	@Override
 	public void run() {
-		while(shopOpen.get()) {
+		while(shop.isOpen()) {
 			try {
-				waitingRoom.take();
-				Thread.sleep(HAIRCUT_TIME_MILLIS);
-				totalHaircuts.incrementAndGet();
+				Object customer = shop.napUntilCustomerArrives();
+				cutHair(customer);
+				shop.recordHaircut();
 			} catch (InterruptedException e) {
 				Thread.currentThread().interrupt();
 				break;
 			}
 		}
+	}
+
+	private void cutHair(Object customer) throws InterruptedException {
+		Thread.sleep(HAIRCUT_TIME_MILLIS);
 	}
 
 }
